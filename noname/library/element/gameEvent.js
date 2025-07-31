@@ -38,6 +38,10 @@ export class GameEvent {
 		return "GameEvent";
 	}
 	/**
+	 * @type { Map }
+	 */
+	cardMoveMap;
+	/**
 	 * @type { Partial<Result> }
 	 */
 	result;

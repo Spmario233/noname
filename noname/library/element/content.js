@@ -10,6 +10,121 @@ import { Player } from "./player.js";
 
 // 未来再改
 export const Content = {
+	loseAsync: async (event, trigger, player) => {
+		//首先将所有属于角色的牌全部移动到ui.special
+		const map = event.cardMoveMap, cards = map.keys();
+		const loseMap = new Map();
+		cards.forEach((card)=>{
+			const info = map.get(card);
+			const owner = get.owner(card, "judge"), fromInfo = info.from, toInfo = info.to;
+			const position = get.position(card, true);
+			fromInfo.position = position;
+			if (owner) {
+				//排除原地tp情况
+				if (fromInfo.player === toInfo.player && toInfo.position === fromInfo.position){
+					loseMap.delete(card);
+					return;
+				}
+				fromInfo.player = owner;
+				if (!loseMap.has(owner)) {
+					loseMap.set(owner, [card]);
+				}
+				else {
+					loseMap.get(owner).add(card);
+				}
+				
+			}
+		});
+		if (loseMap.size > 0) {
+			const players = Array.from(loseMap.keys()).sortBySeat();
+			for (const target of players) {
+				await target.lose(loseMap.get(target), ui.special).set("forceDie", true).set("getlx", false);
+			}
+		}
+		//然后将牌从ui.special分配到各个区域
+		//eMap和jMap以虚拟牌作为标志，其他以player作为标志
+		const hMap = new Map(), eMap = new Map(), jMap = new Map(), sMap = new Map, xMap = new Map();
+		const cardPiles = [], discardPiles = [], orderings = [], specials = [];
+		const tempCards = map.keys();
+		tempCards.forEach(card => {
+			const info = map.get(card), fromInfo = info.from, toInfo = info.to;
+			switch (toInfo) {
+				case "h":
+					let target = toInfo.player;
+					if (get.itemtype(target) === "player") {
+						if (!hMap.has(target)) {
+							hMap.set(target, [card]);
+						}
+						else {
+							hMap.get(target).add(card);
+						}
+					} else {
+						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的手牌区");
+					}
+					break;
+				case "e":
+					let target = toInfo.player, vcard = toInfo.vcard || card;
+					if (get.itemtype(target) === "player") {
+						if(!eMap.has(vcard)){
+							eMap.set(vcard, [card, target, toInfo])
+						}
+						else{
+							eMap.get(vcard)[0].add(card);
+						}
+					} else {
+						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的装备区");
+					}
+					break;
+				case "j":
+					let target = toInfo.player, vcard = toInfo.vcard || card;
+					if (get.itemtype(target) === "player") {
+						if(!jMap.has(vcard)){
+							jMap.set(vcard, [[card], target, toInfo])
+						}
+						else{
+							jMap.get(vcard)[0].add(card);
+						}
+					} else {
+						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的判定区");
+					}
+					break;
+				case "s":
+					let target = toInfo.player;
+					if (get.itemtype(target) === "player") {
+						if (!sMap.has(target)) {
+							sMap.set(target, [card]);
+						}
+						else {
+							sMap.get(target).add(card);
+						}
+					} else {
+						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的特殊区");
+					}
+					break;break;
+				case "x":
+					let target = toInfo.player;
+					if (get.itemtype(target) === "player") {
+						if (!xMap.has(target)) {
+							xMap.set(target, [card]);
+						}
+						else {
+							xMap.get(target).add(card);
+						}
+					} else {
+						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的扩展手牌区");
+					}
+					break;break;
+				case "c":
+					break;
+				case "d":
+					break;
+				case "o":
+					break;
+			}
+		});
+
+		//给移动结束的牌添加gaintag
+	},
 	emptyEvent: async event => {
 		await event.trigger(event.name);
 	},
