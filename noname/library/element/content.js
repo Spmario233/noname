@@ -49,8 +49,8 @@ export const Content = {
 		tempCards.forEach(card => {
 			const info = map.get(card), fromInfo = info.from, toInfo = info.to;
 			switch (toInfo) {
-				case "h":
-					let target = toInfo.player;
+				case "h":{
+						let target = toInfo.player;
 					if (get.itemtype(target) === "player") {
 						if (!hMap.has(target)) {
 							hMap.set(target, [card]);
@@ -62,11 +62,12 @@ export const Content = {
 						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的手牌区");
 					}
 					break;
-				case "e":
+				}
+				case "e":{
 					let target = toInfo.player, vcard = toInfo.vcard || card;
 					if (get.itemtype(target) === "player") {
 						if(!eMap.has(vcard)){
-							eMap.set(vcard, [card, target, toInfo])
+							eMap.set(vcard, [[card], target, toInfo]);
 						}
 						else{
 							eMap.get(vcard)[0].add(card);
@@ -75,7 +76,8 @@ export const Content = {
 						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的装备区");
 					}
 					break;
-				case "j":
+				}
+				case "j":{
 					let target = toInfo.player, vcard = toInfo.vcard || card;
 					if (get.itemtype(target) === "player") {
 						if(!jMap.has(vcard)){
@@ -88,7 +90,8 @@ export const Content = {
 						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的判定区");
 					}
 					break;
-				case "s":
+				}
+				case "s":{
 					let target = toInfo.player;
 					if (get.itemtype(target) === "player") {
 						if (!sMap.has(target)) {
@@ -100,8 +103,9 @@ export const Content = {
 					} else {
 						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的特殊区");
 					}
-					break;break;
-				case "x":
+					break;
+				}
+				case "x":{
 					let target = toInfo.player;
 					if (get.itemtype(target) === "player") {
 						if (!xMap.has(target)) {
@@ -113,17 +117,66 @@ export const Content = {
 					} else {
 						console.warn("错误，将" + get.translation(card) + "移动到一个不存在角色的扩展手牌区");
 					}
-					break;break;
+					break;
+				}
 				case "c":
+					cardPiles.push(card);
 					break;
 				case "d":
+					discardPiles.push(card);
 					break;
 				case "o":
+					orderings.push(card);
 					break;
 			}
+			
 		});
-
-		//给移动结束的牌添加gaintag
+		if (hMap.size > 0) {
+			const players = Array.from(hMap.keys()).sortBySeat();
+			for (const target of players) {
+				const gainEvent = target.gain(hMap.get(target), ui.special).set("forceDie", true).set("getlx", false);
+				if(event.gaintag) gainEvent.gaintag.addArray(event.gaintag);
+				await gainEvent;
+			}
+		}
+		if (eMap.size > 0) {
+			const vcards = Array.from(eMap.keys());
+			for (const vcard of vcards){
+				const { cards, target, info } = eMap.get(vcard);
+				target.equip(vcard);
+			}
+		}
+		if (jMap.size > 0) {
+			const vcards = Array.from(jMap.keys());
+			for (const vcard of vcards){
+				const { cards, target, info } = jMap.get(vcard);
+				target.addJudge(vcard, cards);
+			}
+		}
+		if (sMap.size > 0) {
+			const players = Array.from(sMap.keys()).sortBySeat();
+			for (const target of players) {
+				const gainEvent = target.addToExpansion(sMap.get(target), ui.special).set("forceDie", true).set("getlx", false);
+				if(event.gaintag) gainEvent.gaintag.addArray(event.gaintag);
+				await gainEvent;
+			}
+		}
+		if (xMap.size > 0) {
+			const players = Array.from(hMap.keys()).sortBySeat();
+			for (const target of players) {
+				const cards = xMap.get(target);
+				target.directgains(cards, null, event.gaintag);
+			}
+		}
+		if (cardPiles.length > 0) {
+			//game.cardsGotoPile(???)
+		}
+		if (discardPiles.length > 0) {
+			game.cardsDiscard(discardPiles);
+		}
+		if(orderings.length > 0){
+			game.cardsGotoOrdering(orderings);
+		}
 	},
 	emptyEvent: async event => {
 		await event.trigger(event.name);
